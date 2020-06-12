@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+
+## This script assumes that you have an upstream and origin branch set up.
+
+# Establish variables
+branch="$1"
+up_branch="$2"
+FATAL="\033[31m"
+INFO="\033[34m"
+WARNING="\033[33m"
+RESET="\033[0m"
+
+
+# Perform rebase against upstream
+rebase_repo ()
+{
+  echo -e "$INFO Checking out $up_branch... $RESET"
+  echo -e "$INFO ---------------------- $RESET"
+  git checkout $up_branch
+  printf "\n"
+  echo -e "$INFO Performing rebase on upstream and $up_branch"
+  echo -e "$INFO ---------------------------------------- $RESET"
+  git pull --rebase upstream $up_branch
+  printf "\n"
+  echo -e "$INFO Fetching... $RESET"
+  echo -e "$INFO ----------- $RESET"
+  git fetch --all
+  printf "\n"
+  git status
+  printf "\n"
+  git push
+  printf "\n"
+  echo -e "$INFO Pushing to origin $up_branch $RESET"
+  echo -e "$INFO ------------------------ $RESET"
+  git status
+}
+
+# Checks out a branch
+start_pr ()
+{
+  git checkout -b ${branch}
+}
+
+# Prompt the user for a branch to create a branch if no command line argument given
+# if [[ $# -eq 0 ]]; then
+if [[ -z $branch || -z $up_branch ]]; then
+    read -p "What is your branch number? " branch
+    read -p "What is your upstream branch? " up_branch
+    rebase_repo
+fi
+
+# Test against if the branch exists
+if grep ${branch} <(git branch | xargs) >/dev/null; then
+  echo -e "$FATAL fatal: A branch named '${branch}' already exists, you must checkout a new branch $RESET"
+  exit 1
+else
+  rebase_repo
+fi
+printf "\n"
+
+# Asks if the user would like to start the PR
+read -p "Would you like to start a PR? y/n " answer
+if [[ "${answer}" = "yes" || "${answer}" = "y" ]]; then
+  start_pr
+else
+  echo -e "$INFO PR has not been created. Rerun the script if you change your mind. $RESET"
+  exit 1
+fi
